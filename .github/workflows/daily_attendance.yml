@@ -1,0 +1,37 @@
+name: Daily Attendance Automation
+
+on:
+  schedule:
+    # 03:30 UTC corresponds to 09:00 AM IST (UTC +5:30)
+    - cron: '30 3 * * *'
+  workflow_dispatch: # Allows you to trigger it manually from the GitHub Actions tab
+
+jobs:
+  run-attendance:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install selenium
+
+    - name: Create Config File from Secrets
+      run: |
+        echo '{
+          "login_url": "https://hrms-fmcg.uknowva.com/index.php",
+          "attendance_url": "https://hrms-fmcg.uknowva.com/attendances/my-attendance",
+          "username": "${{ secrets.HRMS_USERNAME }}",
+          "password": "${{ secrets.HRMS_PASSWORD }}"
+        }' > config.json
+
+    - name: Run Automation Script
+      run: python automate_attendance.py --action auto --headless

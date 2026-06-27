@@ -1,0 +1,15 @@
+# Ignore local configuration files containing passwords
+config.json
+
+# Ignore local execution logs
+attendance_log.txt
+
+# Ignore error screenshots
+error_screenshot.png
+
+# Ignore Python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
