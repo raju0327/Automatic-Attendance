@@ -44,8 +44,8 @@ def run_automation(action, headless):
     wait = WebDriverWait(driver, 15)
     
     # Override Geolocation coordinates (e.g., matching local office or city)
-    latitude = config.get("latitude", 19.0760)
-    longitude = config.get("longitude", 72.8777)
+    latitude = config.get("latitude", 13.0827)
+    longitude = config.get("longitude", 80.2707)
     print(f"Setting Geolocation override: Latitude = {latitude}, Longitude = {longitude}")
     driver.execute_cdp_cmd("Emulation.setGeolocationOverride", {
         "latitude": latitude,
