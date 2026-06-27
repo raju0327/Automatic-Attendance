@@ -32,10 +32,26 @@ def run_automation(action, headless):
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--window-size=1920,1080")
     
+    # Enable Geolocation permission by default
+    prefs = {
+        "profile.default_content_setting_values.geolocation": 1  # 1 = Allow, 2 = Block
+    }
+    options.add_experimental_option("prefs", prefs)
+    
     # Start WebDriver
     print("Starting Chrome WebDriver...")
     driver = webdriver.Chrome(options=options)
     wait = WebDriverWait(driver, 15)
+    
+    # Override Geolocation coordinates (e.g., matching local office or city)
+    latitude = config.get("latitude", 19.0760)
+    longitude = config.get("longitude", 72.8777)
+    print(f"Setting Geolocation override: Latitude = {latitude}, Longitude = {longitude}")
+    driver.execute_cdp_cmd("Emulation.setGeolocationOverride", {
+        "latitude": latitude,
+        "longitude": longitude,
+        "accuracy": 100
+    })
     
     try:
         # Step 1: Login
