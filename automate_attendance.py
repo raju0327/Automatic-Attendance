@@ -143,13 +143,26 @@ def run_automation(action, headless):
                 print("Found Check In button. Clicking it...")
                 checkin_btn.click()
                 
-                # Wait for pop-up dismiss button
+                # Wait for pop-up dismiss button(s) in a loop (in case it appears multiple times)
                 print("Waiting for popup dismiss button (OK)...")
-                dismiss_btn = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "dismissButton")))
-                print("Found dismiss button. Clicking OK...")
-                dismiss_btn.click()
-                time.sleep(2)
-                print("Successfully completed Check In flow!")
+                popup_count = 0
+                while True:
+                    try:
+                        # Wait up to 5 seconds for a dismiss button to be clickable
+                        popup_wait = WebDriverWait(driver, 5)
+                        dismiss_btn = popup_wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "dismissButton")))
+                        popup_count += 1
+                        print(f"Found popup dismiss button #{popup_count}. Clicking OK...")
+                        dismiss_btn.click()
+                        # Wait 5 seconds before checking for the next popup
+                        time.sleep(5)
+                    except TimeoutException:
+                        # No more popups appeared
+                        if popup_count > 0:
+                            print(f"Successfully dismissed all {popup_count} popups!")
+                        else:
+                            print("No popup dismiss button appeared.")
+                        break
                 
             except TimeoutException:
                 print("Check In button or popup was not found / timed out.")
