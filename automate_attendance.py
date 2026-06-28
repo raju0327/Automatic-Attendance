@@ -23,28 +23,50 @@ def load_config():
 def dismiss_any_popups(driver, timeout=5):
     """
     Attempts to find and click the OK dismiss button using multiple robust selectors.
-    Returns True if successfully clicked, False if not found/timed out.
+    It searches both the main document and all iframes.
     """
-    wait = WebDriverWait(driver, timeout)
-    dismiss_selectors = [
-        (By.CSS_SELECTOR, "button.dismissButton"),
-        (By.XPATH, "//button[contains(@class, 'dismissButton') and text()='OK']"),
-        (By.XPATH, "//button[contains(@class, 'dismissButton')]"),
-        (By.CLASS_NAME, "dismissButton"),
-        (By.XPATH, "//button[text()='OK']")
-    ]
-    for selector_type, selector_val in dismiss_selectors:
-        try:
-            dismiss_btn = wait.until(EC.element_to_be_clickable((selector_type, selector_val)))
-            print(f"Dismiss button found via {selector_type}='{selector_val}'. Clicking...")
+    def click_button(d):
+        # Use a shorter timeout inside click_button loop to avoid long delays
+        wait = WebDriverWait(d, 2)
+        dismiss_selectors = [
+            (By.CSS_SELECTOR, "button.dismissButton"),
+            (By.XPATH, "//button[contains(@class, 'dismissButton') and text()='OK']"),
+            (By.XPATH, "//button[contains(@class, 'dismissButton')]"),
+            (By.CLASS_NAME, "dismissButton"),
+            (By.XPATH, "//button[text()='OK']")
+        ]
+        for selector_type, selector_val in dismiss_selectors:
             try:
-                dismiss_btn.click()
-            except Exception as e:
-                print(f"Normal click failed: {e}. Attempting JavaScript click fallback...")
-                driver.execute_script("arguments[0].click();", dismiss_btn)
-            return True
+                dismiss_btn = wait.until(EC.element_to_be_clickable((selector_type, selector_val)))
+                print(f"Dismiss button found via {selector_type}='{selector_val}'. Clicking...")
+                try:
+                    dismiss_btn.click()
+                except Exception as e:
+                    print(f"Normal click failed: {e}. Trying JS click...")
+                    d.execute_script("arguments[0].click();", dismiss_btn)
+                return True
+            except Exception:
+                continue
+        return False
+
+    # Try in the main document first
+    driver.switch_to.default_content()
+    if click_button(driver):
+        return True
+
+    # Search inside all iframes
+    iframes = driver.find_elements(By.TAG_NAME, "iframe")
+    for index, iframe in enumerate(iframes):
+        try:
+            driver.switch_to.frame(iframe)
+            if click_button(driver):
+                print(f"Popup dismissed inside iframe {index}")
+                driver.switch_to.default_content()
+                return True
+            driver.switch_to.default_content()
         except Exception:
-            continue
+            driver.switch_to.default_content()
+
     return False
 
 def run_automation(action, headless):
@@ -180,10 +202,34 @@ def run_automation(action, headless):
                         break
 
                 print("Checking for 'Check In' button...")
-                # Look for Check In anchor link by ID or text
-                checkin_btn = wait.until(EC.element_to_be_clickable((By.ID, "checkoutbutton")))
-                print("Found Check In button. Clicking it...")
-                checkin_btn.click()
+                # Look for Check In anchor link by ID on main page or inside iframes
+                checkin_btn = None
+                try:
+                    checkin_btn = wait.until(EC.element_to_be_clickable((By.ID, "checkoutbutton")))
+                except Exception:
+                    # Search inside all iframes
+                    iframes = driver.find_elements(By.TAG_NAME, "iframe")
+                    for index, iframe in enumerate(iframes):
+                        try:
+                            driver.switch_to.frame(iframe)
+                            checkin_btn = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.ID, "checkoutbutton")))
+                            print(f"Found Check In button inside iframe {index}")
+                            break
+                        except Exception:
+                            driver.switch_to.default_content()
+                
+                if not checkin_btn:
+                    raise NoSuchElementException("Could not locate Check In button on main page or inside any iframe.")
+                
+                print("Clicking Check In button...")
+                try:
+                    checkin_btn.click()
+                except Exception as e:
+                    print(f"Normal Check In click failed: {e}. Trying JS click...")
+                    driver.execute_script("arguments[0].click();", checkin_btn)
+                
+                # Make sure we switch back to the main document context
+                driver.switch_to.default_content()
                 
                 # Wait for pop-up dismiss button(s) in a loop (in case it appears multiple times)
                 print("Waiting for popup dismiss button (OK)...")
@@ -209,10 +255,34 @@ def run_automation(action, headless):
         if action in ["checkout", "auto"]:
             try:
                 print("Checking for 'Checkout' button...")
-                # Look for the checkout submit input element
-                checkout_btn = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "finger_scan_checkout")))
+                # Look for the checkout submit input element on main page or inside iframes
+                checkout_btn = None
+                try:
+                    checkout_btn = wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "finger_scan_checkout")))
+                except Exception:
+                    # Search inside all iframes
+                    iframes = driver.find_elements(By.TAG_NAME, "iframe")
+                    for index, iframe in enumerate(iframes):
+                        try:
+                            driver.switch_to.frame(iframe)
+                            checkout_btn = WebDriverWait(driver, 5).until(EC.element_to_be_clickable((By.CLASS_NAME, "finger_scan_checkout")))
+                            print(f"Found Checkout button inside iframe {index}")
+                            break
+                        except Exception:
+                            driver.switch_to.default_content()
+                            
+                if not checkout_btn:
+                    raise NoSuchElementException("Could not locate Checkout button on main page or inside any iframe.")
+                    
                 print("Found Checkout button. Clicking it...")
-                checkout_btn.click()
+                try:
+                    checkout_btn.click()
+                except Exception as e:
+                    print(f"Normal Checkout click failed: {e}. Trying JS click...")
+                    driver.execute_script("arguments[0].click();", checkout_btn)
+                
+                # Make sure we switch back to the main document context
+                driver.switch_to.default_content()
                 time.sleep(3)
                 print("Successfully completed Checkout flow!")
                 
