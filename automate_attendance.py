@@ -137,6 +137,17 @@ def run_automation(action, headless):
         # Handle "Check In" flow
         if action in ["checkin", "auto"]:
             try:
+                # Dismiss any popups that appear immediately upon loading the page
+                print("Checking for any immediate popups on page load...")
+                try:
+                    initial_popup_wait = WebDriverWait(driver, 5)
+                    dismiss_btn = initial_popup_wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "dismissButton")))
+                    print("Found an immediate popup on page load. Clicking OK...")
+                    dismiss_btn.click()
+                    time.sleep(2)
+                except TimeoutException:
+                    print("No immediate page-load popup detected. Proceeding to Check In...")
+
                 print("Checking for 'Check In' button...")
                 # Look for Check In anchor link by ID or text
                 checkin_btn = wait.until(EC.element_to_be_clickable((By.ID, "checkoutbutton")))
