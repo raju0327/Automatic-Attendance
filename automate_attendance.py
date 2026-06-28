@@ -20,6 +20,29 @@ def load_config():
     with open(CONFIG_FILE, "r") as f:
         return json.load(f)
 
+def dismiss_any_popups(driver, timeout=5):
+    """
+    Attempts to find and click the OK dismiss button using multiple robust selectors.
+    Returns True if successfully clicked, False if not found/timed out.
+    """
+    wait = WebDriverWait(driver, timeout)
+    dismiss_selectors = [
+        (By.CSS_SELECTOR, "button.dismissButton"),
+        (By.XPATH, "//button[contains(@class, 'dismissButton') and text()='OK']"),
+        (By.XPATH, "//button[contains(@class, 'dismissButton')]"),
+        (By.CLASS_NAME, "dismissButton"),
+        (By.XPATH, "//button[text()='OK']")
+    ]
+    for selector_type, selector_val in dismiss_selectors:
+        try:
+            dismiss_btn = wait.until(EC.element_to_be_clickable((selector_type, selector_val)))
+            print(f"Dismiss button found via {selector_type}='{selector_val}'. Clicking OK...")
+            dismiss_btn.click()
+            return True
+        except Exception:
+            continue
+    return False
+
 def run_automation(action, headless):
     config = load_config()
     
@@ -139,13 +162,10 @@ def run_automation(action, headless):
             try:
                 # Dismiss any popups that appear immediately upon loading the page
                 print("Checking for any immediate popups on page load...")
-                try:
-                    initial_popup_wait = WebDriverWait(driver, 5)
-                    dismiss_btn = initial_popup_wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "dismissButton")))
-                    print("Found an immediate popup on page load. Clicking OK...")
-                    dismiss_btn.click()
+                if dismiss_any_popups(driver, timeout=5):
+                    print("Dismissed initial page-load popup.")
                     time.sleep(2)
-                except TimeoutException:
+                else:
                     print("No immediate page-load popup detected. Proceeding to Check In...")
 
                 print("Checking for 'Check In' button...")
@@ -158,17 +178,11 @@ def run_automation(action, headless):
                 print("Waiting for popup dismiss button (OK)...")
                 popup_count = 0
                 while True:
-                    try:
-                        # Wait up to 5 seconds for a dismiss button to be clickable
-                        popup_wait = WebDriverWait(driver, 5)
-                        dismiss_btn = popup_wait.until(EC.element_to_be_clickable((By.CLASS_NAME, "dismissButton")))
+                    if dismiss_any_popups(driver, timeout=5):
                         popup_count += 1
-                        print(f"Found popup dismiss button #{popup_count}. Clicking OK...")
-                        dismiss_btn.click()
                         # Wait 5 seconds before checking for the next popup
                         time.sleep(5)
-                    except TimeoutException:
-                        # No more popups appeared
+                    else:
                         if popup_count > 0:
                             print(f"Successfully dismissed all {popup_count} popups!")
                         else:
