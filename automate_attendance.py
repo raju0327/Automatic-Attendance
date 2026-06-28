@@ -36,8 +36,12 @@ def dismiss_any_popups(driver, timeout=5):
     for selector_type, selector_val in dismiss_selectors:
         try:
             dismiss_btn = wait.until(EC.element_to_be_clickable((selector_type, selector_val)))
-            print(f"Dismiss button found via {selector_type}='{selector_val}'. Clicking OK...")
-            dismiss_btn.click()
+            print(f"Dismiss button found via {selector_type}='{selector_val}'. Clicking...")
+            try:
+                dismiss_btn.click()
+            except Exception as e:
+                print(f"Normal click failed: {e}. Attempting JavaScript click fallback...")
+                driver.execute_script("arguments[0].click();", dismiss_btn)
             return True
         except Exception:
             continue
