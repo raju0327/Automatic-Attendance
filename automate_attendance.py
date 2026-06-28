@@ -160,13 +160,20 @@ def run_automation(action, headless):
         # Handle "Check In" flow
         if action in ["checkin", "auto"]:
             try:
-                # Dismiss any popups that appear immediately upon loading the page
+                # Dismiss any popups that appear immediately upon loading the page (can be multiple)
                 print("Checking for any immediate popups on page load...")
-                if dismiss_any_popups(driver, timeout=5):
-                    print("Dismissed initial page-load popup.")
-                    time.sleep(2)
-                else:
-                    print("No immediate page-load popup detected. Proceeding to Check In...")
+                initial_popup_count = 0
+                while True:
+                    if dismiss_any_popups(driver, timeout=5):
+                        initial_popup_count += 1
+                        print(f"Dismissed initial page-load popup #{initial_popup_count}.")
+                        time.sleep(3)  # Wait for any subsequent popup to render
+                    else:
+                        if initial_popup_count > 0:
+                            print(f"Successfully dismissed all {initial_popup_count} initial popups!")
+                        else:
+                            print("No immediate page-load popup detected.")
+                        break
 
                 print("Checking for 'Check In' button...")
                 # Look for Check In anchor link by ID or text
